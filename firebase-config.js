@@ -1,5 +1,4 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyBuwX_pbhVBh0QCY8vv6tu-U1UKG7pevv4",
   authDomain: "timetrack-27a02.firebaseapp.com",
   projectId: "timetrack-27a02",
