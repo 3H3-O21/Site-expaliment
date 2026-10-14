@@ -1,1 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+
+    <!-- ========== 1. ACCUEIL ========== -->
+    <section class="view view--beige active" id="accueil">
+      <div class="deco deco--accueil" aria-hidden="true"></div>
+      <div class="accueil-contenu">
+        <button type="button" class="btn btn--taupe btn--grand" data-goto="connexion">Connection</button>
+        <button type="button" class="lien" data-goto="inscription">Inscription</button>
+      </div>
+    </section>
+
+    <!-- ========== 2. CONNEXION ========== -->
+    <section class="view view--olive" id="connexion">
+      <div class="deco deco--coin" aria-hidden="true"></div>
+      <form class="formulaire" id="form-connexion">
+        <h1>Connection</h1>
+
+        <label for="connexion-courriel">Courriel</label>
+        <input type="email" id="connexion-courriel" autocomplete="email" required>
+
+        <label for="connexion-mdp">mot de passe</label>
+        <input type="password" id="connexion-mdp" autocomplete="current-password" required>
+
+        <button type="button" class="lien col-2" data-goto="oubli">mot de passe oublié</button>
+
+        <button type="submit" class="btn btn--contour col-2">Connection</button>
+
+        <p class="message tout" role="status" aria-live="polite"></p>
+        <button type="button" class="lien tout" data-goto="accueil">← Retour</button>
+      </form>
+    </section>
+
+    <!-- ========== 3. INSCRIPTION ========== -->
+    <section class="view view--olive" id="inscription">
+      <div class="deco deco--coin" aria-hidden="true"></div>
+      <form class="formulaire" id="form-inscription">
+        <h1>Inscription</h1>
+
+        <label for="inscription-courriel">Courriel</label>
+        <input type="email" id="inscription-courriel" autocomplete="email" required>
+
+        <label for="inscription-mdp">mot de passe</label>
+        <input type="password" id="inscription-mdp" autocomplete="new-password" minlength="8" required>
+
+        <button type="submit" class="btn btn--contour col-2">S'inscrire</button>
+
+        <p class="message tout" role="status" aria-live="polite"></p>
+        <button type="button" class="lien tout" data-goto="accueil">← Retour</button>
+      </form>
+    </section>
+
+    <!-- ========== 4. MOT DE PASSE OUBLIÉ ==========
+         Firebase envoie un courriel avec un lien sécurisé : c'est sur
+         la page ouverte par ce lien que la personne choisit son nouveau mot de passe. -->
+    <section class="view view--beige" id="oubli">
+      <form class="formulaire" id="form-oubli">
+        <h1>Mot de passe oublié</h1>
+
+        <label for="oubli-courriel">Courriel</label>
+        <input type="email" id="oubli-courriel" autocomplete="email" required>
+
+        <button type="submit" class="btn btn--olive col-2">Envoyer le lien</button>
+
+        <p class="message tout" role="status" aria-live="polite"></p>
+        <button type="button" class="lien tout" data-goto="connexion">← Retour à la connexion</button>
+      </form>
+    </section>
+
+    <!-- ========== 5. ÉCRAN CONNECTÉ (provisoire) ==========
+         Remplace le contenu de cette section par le reste de ton site. -->
+    <section class="view view--beige" id="app">
+      <div class="carte-app">
+        <h1>Bienvenue</h1>
+        <p id="app-courriel"></p>
+
+        <p class="message message--info" id="app-verif" data-verif role="status"></p>
+        <button type="button" class="lien" id="btn-renvoyer-verif" hidden>Renvoyer le courriel de vérification</button>
+
+        <p class="message" role="status" aria-live="polite"></p>
+        <button type="button" class="btn btn--olive" id="btn-deconnexion">Déconnexion</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- type="module" : nécessaire pour importer Firebase -->
+  <script type="module" src="script.js"></script>
+</body>
+</html>
