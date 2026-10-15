@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion</title>
+  <title>Suivi des heures</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,22 +80,71 @@
       </form>
     </section>
 
-    <!-- ========== 5. ÉCRAN CONNECTÉ (provisoire) ==========
-         Remplace le contenu de cette section par le reste de ton site. -->
-    <section class="view view--beige" id="app">
-      <div class="carte-app">
-        <h1>Bienvenue</h1>
-        <p id="app-courriel"></p>
+    <!-- ========== 5. SUIVI DES HEURES (après la connexion) ========== -->
+    <section class="view view--app" id="app">
 
+      <header class="app-entete">
+        <span class="statut" id="statut-enregistrement" aria-live="polite"></span>
+        <span class="app-courriel" id="app-courriel"></span>
+        <button type="button" class="btn btn--contour-clair" id="btn-deconnexion">Déconnexion</button>
+      </header>
+
+      <!-- Avis (vérification du courriel, erreurs) : invisible quand il est vide -->
+      <div class="app-avis">
         <p class="message message--info" id="app-verif" data-verif role="status"></p>
         <button type="button" class="lien" id="btn-renvoyer-verif" hidden>Renvoyer le courriel de vérification</button>
-
         <p class="message" role="status" aria-live="polite"></p>
-        <button type="button" class="btn btn--olive" id="btn-deconnexion">Retour à l'accueuil</button>
       </div>
+
+      <div id="zone-feuille" hidden>
+        <div class="barre-outils">
+          <button type="button" class="btn btn--bordure btn--ajouter" id="btn-ajouter-ligne">Ajouter une ligne</button>
+          <button type="button" class="btn btn--bordure btn--effacer" id="btn-tout-effacer">Tout effacer</button>
+        </div>
+
+        <div class="feuille-defile">
+          <div class="feuille">
+            <div class="feuille-entete" aria-hidden="true">
+              <span></span>
+              <span class="entete-grand">Objet</span>
+              <span class="entete-grand">Tâche</span>
+              <span>Dim</span>
+              <span>Lun</span>
+              <span>Mar</span>
+              <span>Mer</span>
+              <span>Jeu</span>
+              <span>Ven</span>
+              <span>Sam</span>
+            </div>
+
+            <!-- Les lignes sont créées par script.js -->
+            <div id="feuille-corps"></div>
+          </div>
+        </div>
+      </div>
+
     </section>
 
   </main>
+
+  <!-- Menu du clic droit sur une case -->
+  <div class="menu-contextuel" id="menu-contextuel" role="menu" hidden></div>
+
+  <!-- Infobulle qui affiche le commentaire d'une case -->
+  <div class="infobulle" id="infobulle" role="tooltip" hidden></div>
+
+  <!-- Fenêtre pour écrire un commentaire -->
+  <dialog id="dialogue-commentaire" aria-labelledby="titre-commentaire">
+    <form method="dialog" id="form-commentaire">
+      <h2 id="titre-commentaire">Commentaire</h2>
+      <label for="texte-commentaire" class="sr-only">Commentaire</label>
+      <textarea id="texte-commentaire" rows="4" maxlength="500"></textarea>
+      <div class="dialogue-actions">
+        <button type="button" class="btn btn--contour" id="btn-annuler-commentaire">Annuler</button>
+        <button type="submit" class="btn btn--olive">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- type="module" : nécessaire pour importer Firebase -->
   <script type="module" src="script.js"></script>
