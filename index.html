@@ -84,6 +84,9 @@
     <section class="view view--app" id="app">
 
       <header class="app-entete">
+        <button type="button" class="btn-reglages" id="btn-reglages" title="Réglages des couleurs" aria-label="Réglages des couleurs" aria-expanded="false" aria-controls="panneau-reglages">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <span class="statut" id="statut-enregistrement" aria-live="polite"></span>
         <span class="app-courriel" id="app-courriel"></span>
         <button type="button" class="btn btn--contour-clair" id="btn-deconnexion">Déconnexion</button>
@@ -97,13 +100,14 @@
       </div>
 
       <div id="zone-feuille" hidden>
-        <div class="barre-outils">
-          <button type="button" class="btn btn--bordure btn--ajouter" id="btn-ajouter-ligne">Ajouter une ligne</button>
-          <button type="button" class="btn btn--bordure btn--effacer" id="btn-tout-effacer">Tout effacer</button>
-        </div>
-
         <div class="feuille-defile">
           <div class="feuille">
+            <!-- « Ajouter une ligne » est centré au-dessus d'« Objet » (même grille que les lignes) -->
+            <div class="feuille-outils">
+              <button type="button" class="btn btn--bordure btn--ajouter" id="btn-ajouter-ligne">Ajouter une ligne</button>
+              <button type="button" class="btn btn--bordure btn--effacer" id="btn-tout-effacer">Tout effacer</button>
+            </div>
+
             <div class="feuille-entete" aria-hidden="true">
               <span></span>
               <span class="entete-grand">Objet</span>
@@ -150,6 +154,20 @@
   <!-- Menu du clic droit sur une case -->
   <div class="menu-contextuel" id="menu-contextuel" role="menu" hidden></div>
 
+  <!-- Panneau des couleurs du thème (bouton de réglage en haut à gauche) -->
+  <div class="panneau-reglages" id="panneau-reglages" role="dialog" aria-labelledby="titre-reglages" hidden>
+    <h2 id="titre-reglages">Couleurs</h2>
+    <label class="ligne-couleur" for="couleur-fonce">
+      <span>Couleur foncée</span>
+      <input type="color" id="couleur-fonce" value="#666441">
+    </label>
+    <label class="ligne-couleur" for="couleur-pale">
+      <span>Couleur pâle</span>
+      <input type="color" id="couleur-pale" value="#e4dcc0">
+    </label>
+    <button type="button" class="btn btn--contour" id="btn-couleurs-defaut">Couleurs par défaut</button>
+  </div>
+
   <!-- Infobulle qui affiche le commentaire d'une case -->
   <div class="infobulle" id="infobulle" role="tooltip" hidden></div>
 
@@ -162,6 +180,21 @@
       <div class="dialogue-actions">
         <button type="button" class="btn btn--contour" id="btn-annuler-commentaire">Annuler</button>
         <button type="submit" class="btn btn--olive">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Fenêtre pour ajouter du temps à la main (s'additionne au temps de la case) -->
+  <dialog id="dialogue-ajout" aria-labelledby="titre-ajout">
+    <form id="form-ajout">
+      <h2 id="titre-ajout">Ajouter du temps</h2>
+      <p class="dialogue-aide" id="aide-ajout"></p>
+      <label for="valeur-ajout" class="sr-only">Temps à ajouter, en heures</label>
+      <input type="text" id="valeur-ajout" inputmode="decimal" autocomplete="off" placeholder="En heures : 0,5 = 30 min">
+      <p class="message" id="message-ajout" role="alert"></p>
+      <div class="dialogue-actions">
+        <button type="button" class="btn btn--contour" id="btn-annuler-ajout">Annuler</button>
+        <button type="submit" class="btn btn--olive">Ajouter</button>
       </div>
     </form>
   </dialog>

@@ -201,6 +201,175 @@ $('#btn-renvoyer-verif').addEventListener('click', async () => {
 });
 
 /* ==========================================================
+   THÈME : deux couleurs modifiables (foncée et pâle)
+   Les autres teintes (fond de la page, boutons, texte) sont calculées à
+   partir de ces deux couleurs. Les couleurs par défaut sont celles de style.css.
+   Enregistré dans Firestore (champ « reglages ») et gardé sur l'appareil
+   pour éviter un clignotement au chargement de la page.
+   ========================================================== */
+const THEME_DEFAUT = { fonce: '#666441', pale: '#e4dcc0' };
+const PROPRIETES_THEME = ['--olive', '--beige', '--taupe', '--olive-clair', '--encre'];
+const CLE_THEME_LOCAL = 'theme-couleurs';
+const DELAI_REGLAGES_MS = 600;
+const ENCRE_FONCEE = '#1c1b10';
+const ENCRE_CLAIRE = '#f6f3e8';
+
+let themeActuel = { ...THEME_DEFAUT };
+let delaiReglages = null;
+
+const champFonce = $('#couleur-fonce');
+const champPale = $('#couleur-pale');
+const boutonReglages = $('#btn-reglages');
+const panneauReglages = $('#panneau-reglages');
+
+function estCouleur(valeur) {
+  return typeof valeur === 'string' && /^#[0-9a-f]{6}$/i.test(valeur);
+}
+
+// Garde seulement des couleurs valides (sinon : les couleurs par défaut)
+function normaliserTheme(brut) {
+  return {
+    fonce: brut && estCouleur(brut.fonce) ? brut.fonce.toLowerCase() : THEME_DEFAUT.fonce,
+    pale: brut && estCouleur(brut.pale) ? brut.pale.toLowerCase() : THEME_DEFAUT.pale
+  };
+}
+
+function versRgb(hex) {
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+}
+
+function versHex(rgb) {
+  return '#' + rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+}
+
+// part = 0 -> couleur a, part = 1 -> couleur b
+function melanger(a, b, part) {
+  const rgbA = versRgb(a);
+  const rgbB = versRgb(b);
+  return versHex(rgbA.map((v, i) => v + (rgbB[i] - v) * part));
+}
+
+function luminance(hex) {
+  const [r, g, b] = versRgb(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function appliquerTheme(theme) {
+  themeActuel = theme;
+  const style = document.documentElement.style;
+  const parDefaut = theme.fonce === THEME_DEFAUT.fonce && theme.pale === THEME_DEFAUT.pale;
+
+  if (parDefaut) {
+    // Aucune valeur imposée : ce sont les couleurs d'origine de style.css
+    PROPRIETES_THEME.forEach((p) => style.removeProperty(p));
+  } else {
+    const fond = melanger(theme.fonce, theme.pale, 0.7); // fond de la page de suivi
+    const lumFond = luminance(fond);
+    const contrasteFonce = (lumFond + 0.05) / (luminance(ENCRE_FONCEE) + 0.05);
+    const contrasteClair = (luminance(ENCRE_CLAIRE) + 0.05) / (lumFond + 0.05);
+
+    style.setProperty('--olive', theme.fonce);
+    style.setProperty('--beige', theme.pale);
+    style.setProperty('--taupe', fond);
+    style.setProperty('--olive-clair', melanger(theme.fonce, theme.pale, 0.18));
+    // Texte foncé ou clair, selon ce qui se lit le mieux sur le fond de la page
+    style.setProperty('--encre', contrasteFonce >= contrasteClair ? ENCRE_FONCEE : ENCRE_CLAIRE);
+  }
+
+  if (champFonce.value !== theme.fonce) champFonce.value = theme.fonce;
+  if (champPale.value !== theme.pale) champPale.value = theme.pale;
+}
+
+function lireThemeLocal() {
+  try {
+    return normaliserTheme(JSON.parse(localStorage.getItem(CLE_THEME_LOCAL)));
+  } catch {
+    return { ...THEME_DEFAUT };
+  }
+}
+
+function sauverThemeLocal(theme) {
+  try {
+    localStorage.setItem(CLE_THEME_LOCAL, JSON.stringify(theme));
+  } catch {
+    // stockage indisponible (navigation privée, etc.) : sans importance
+  }
+}
+
+function planifierSauvegardeReglages() {
+  if (!chargementOk) return;
+  clearTimeout(delaiReglages);
+  delaiReglages = setTimeout(enregistrerReglages, DELAI_REGLAGES_MS);
+}
+
+async function enregistrerReglages() {
+  clearTimeout(delaiReglages);
+  delaiReglages = null;
+  if (!uid || !chargementOk) return;
+
+  try {
+    await setDoc(doc(db, 'utilisateurs', uid), { reglages: themeActuel }, { merge: true });
+    majStatut('Enregistré');
+  } catch (err) {
+    majStatut('Non enregistré');
+    afficherMessage('app', messageErreur(err));
+  }
+}
+
+function changerTheme(theme) {
+  appliquerTheme(theme);
+  sauverThemeLocal(theme);
+  planifierSauvegardeReglages();
+}
+
+champFonce.addEventListener('input', () => {
+  changerTheme(normaliserTheme({ fonce: champFonce.value, pale: champPale.value }));
+});
+champPale.addEventListener('input', () => {
+  changerTheme(normaliserTheme({ fonce: champFonce.value, pale: champPale.value }));
+});
+$('#btn-couleurs-defaut').addEventListener('click', () => changerTheme({ ...THEME_DEFAUT }));
+
+/* Panneau des couleurs : s'ouvre sous le bouton de réglage */
+function ouvrirReglages() {
+  panneauReglages.hidden = false;
+  boutonReglages.setAttribute('aria-expanded', 'true');
+
+  const bouton = boutonReglages.getBoundingClientRect();
+  const panneau = panneauReglages.getBoundingClientRect();
+  panneauReglages.style.left = `${Math.max(8, Math.min(bouton.left, window.innerWidth - panneau.width - 8))}px`;
+  panneauReglages.style.top = `${bouton.bottom + 8}px`;
+  champFonce.focus();
+}
+
+function fermerReglages() {
+  if (panneauReglages.hidden) return;
+  panneauReglages.hidden = true;
+  boutonReglages.setAttribute('aria-expanded', 'false');
+}
+
+boutonReglages.addEventListener('click', () => {
+  if (panneauReglages.hidden) ouvrirReglages();
+  else fermerReglages();
+});
+
+document.addEventListener('click', (e) => {
+  if (!panneauReglages.hidden && !panneauReglages.contains(e.target) && !boutonReglages.contains(e.target)) {
+    fermerReglages();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fermerReglages();
+});
+
+// Au chargement : dernier thème utilisé sur cet appareil (évite un clignotement)
+appliquerTheme(lireThemeLocal());
+
+/* ==========================================================
    FEUILLE DE TEMPS
    Chaque utilisateur a sa feuille, enregistrée dans Firestore
    (document utilisateurs/{uid}, champ « feuille »).
@@ -376,12 +545,14 @@ async function enregistrer() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     if (delaiSauvegarde) enregistrer();
+    if (delaiReglages) enregistrerReglages();
   } else if (chrono) {
     tictac();
   }
 });
 window.addEventListener('pagehide', () => {
   if (delaiSauvegarde) enregistrer();
+  if (delaiReglages) enregistrerReglages();
 });
 
 async function chargerFeuille(utilisateur) {
@@ -389,9 +560,12 @@ async function chargerFeuille(utilisateur) {
   chargementOk = false;
 
   let brut = null;
+  let brutReglages = null;
   try {
     const instantane = await getDoc(doc(db, 'utilisateurs', uid));
-    brut = instantane.exists() ? instantane.data().feuille : null;
+    const donnees = instantane.exists() ? instantane.data() : {};
+    brut = donnees.feuille || null;
+    brutReglages = donnees.reglages || null;
     chargementOk = true;
   } catch (err) {
     // On n'affiche pas la feuille et on n'enregistre rien : on ne risque pas d'écraser les vraies données.
@@ -399,6 +573,11 @@ async function chargerFeuille(utilisateur) {
     $('#zone-feuille').hidden = true;
     return;
   }
+
+  // Couleurs de cet utilisateur (les couleurs par défaut s'il n'a rien choisi)
+  const themeEnregistre = normaliserTheme(brutReglages);
+  appliquerTheme(themeEnregistre);
+  sauverThemeLocal(themeEnregistre);
 
   const etat = normaliserFeuille(brut);
   lignes = etat.lignes;
@@ -413,6 +592,8 @@ async function chargerFeuille(utilisateur) {
 function reinitialiserFeuille() {
   clearTimeout(delaiSauvegarde);
   delaiSauvegarde = null;
+  clearTimeout(delaiReglages);
+  delaiReglages = null;
   arreterMinuteur();
   uid = null;
   chargementOk = false;
@@ -583,11 +764,11 @@ function validerSaisie(ligne, jour) {
    Ajouter / supprimer des lignes
    ---------------------------------------------------------- */
 $('#btn-ajouter-ligne').addEventListener('click', () => {
-  lignes.push(nouvelleLigne());
+  lignes.unshift(nouvelleLigne()); // la plus récente en haut
   rendreFeuille();
 
-  const derniere = corps.lastElementChild;
-  const champ = derniere && derniere.querySelector('.champ-texte');
+  const premiere = corps.firstElementChild;
+  const champ = premiere && premiere.querySelector('.champ-texte');
   if (champ) champ.focus();
 
   planifierSauvegarde();
@@ -716,6 +897,8 @@ function ouvrirMenu(e, ligne, jour) {
     ajouterOptionMenu('Démarrer le chrono', () => demarrerChrono(ligne, jour));
   }
 
+  ajouterOptionMenu('Ajouter du temps', () => ouvrirDialogueAjout(ligne, jour));
+
   menu.hidden = false;
 
   // Position : à la souris, sans sortir de l'écran
@@ -776,6 +959,70 @@ $('#btn-annuler-commentaire').addEventListener('click', () => {
 
 dialogue.addEventListener('close', () => {
   cibleCommentaire = null;
+});
+
+/* ----------------------------------------------------------
+   Ajouter du temps à la main : le temps s'additionne à celui de la case
+   ---------------------------------------------------------- */
+const dialogueAjout = $('#dialogue-ajout');
+let cibleAjout = null; // { ligne, jour } pendant que la fenêtre est ouverte
+
+function ouvrirDialogueAjout(ligne, jour) {
+  cibleAjout = { ligne, jour };
+  const actuel = estEnMarche(ligne, jour) ? secondesChrono() : ligne.jours[jour].s;
+
+  $('#titre-ajout').textContent = `Ajouter du temps (${JOURS_COMPLETS[jour]})`;
+  $('#aide-ajout').textContent = actuel
+    ? `Temps déjà dans la case : ${formaterHeures(actuel)} h. Le temps ajouté s'additionne.`
+    : 'La case est vide pour l\'instant.';
+
+  const message = $('#message-ajout');
+  message.textContent = '';
+  message.className = 'message';
+  $('#valeur-ajout').value = '';
+
+  dialogueAjout.showModal();
+  $('#valeur-ajout').focus();
+}
+
+function messageAjout(texte) {
+  const message = $('#message-ajout');
+  message.textContent = texte;
+  message.className = 'message message--erreur';
+}
+
+$('#form-ajout').addEventListener('submit', (e) => {
+  e.preventDefault(); // la fenêtre reste ouverte si la saisie est invalide
+  if (!cibleAjout) return;
+  const { ligne, jour } = cibleAjout;
+
+  const heures = analyserHeures($('#valeur-ajout').value);
+  const ajout = heures === null ? 0 : Math.round(heures * 3600);
+  if (ajout < 1) {
+    messageAjout('Écris un nombre d\'heures plus grand que 0, par exemple 0,5 (30 min) ou 1,25 (1 h 15).');
+    return;
+  }
+
+  const enMarche = estEnMarche(ligne, jour);
+  const actuel = enMarche ? secondesChrono() : ligne.jours[jour].s;
+  if (actuel + ajout > MAX_HEURES_PAR_CASE * 3600) {
+    messageAjout(`Une case ne peut pas dépasser ${MAX_HEURES_PAR_CASE} h.`);
+    return;
+  }
+
+  ligne.jours[jour].s += ajout;
+  if (enMarche) chrono.base += ajout; // le chrono continue à partir du nouveau temps
+
+  majCellule(ligne, jour);
+  majTotaux();
+  planifierSauvegarde(enMarche);
+  dialogueAjout.close();
+});
+
+$('#btn-annuler-ajout').addEventListener('click', () => dialogueAjout.close());
+
+dialogueAjout.addEventListener('close', () => {
+  cibleAjout = null;
 });
 
 function afficherInfobulle(ligne, jour, enveloppe) {
@@ -850,6 +1097,7 @@ if (pleinEcranPossible) {
    ---------------------------------------------------------- */
 $('#btn-deconnexion').addEventListener('click', async () => {
   if (delaiSauvegarde) await enregistrer(); // ne perd aucune modification
+  if (delaiReglages) await enregistrerReglages();
   await signOut(auth);
 });
 
