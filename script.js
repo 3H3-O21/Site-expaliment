@@ -245,6 +245,22 @@ function formaterHeures(secondes) {
   return String(heures === 0 ? 0.01 : heures).replace('.', ',');
 }
 
+// Texte d'une case : "-" quand il n'y a aucun temps
+function texteCase(secondes) {
+  return secondes ? formaterHeures(secondes) : '-';
+}
+
+// Cases « Total » sous les jours de la semaine
+const totauxJours = JOURS.map((_, i) => document.querySelector(`.total-jour[data-jour="${i}"]`));
+
+// Additionne les temps de chaque jour (un chrono en marche est compté une fois arrêté)
+function majTotaux() {
+  JOURS.forEach((_, jour) => {
+    const secondes = lignes.reduce((somme, l) => somme + l.jours[jour].s, 0);
+    totauxJours[jour].textContent = texteCase(secondes);
+  });
+}
+
 // "1,5" ou "1.5" -> 1.5   "" -> 0   texte invalide -> null
 function analyserHeures(texte) {
   const t = texte.trim().replace(',', '.');
@@ -404,6 +420,7 @@ function reinitialiserFeuille() {
   chrono = null;
   cellules.clear();
   corps.replaceChildren();
+  majTotaux();
   $('#zone-feuille').hidden = true;
   cacherMenu();
   cacherInfobulle();
@@ -416,6 +433,7 @@ function reinitialiserFeuille() {
 function rendreFeuille() {
   cellules.clear();
   corps.replaceChildren(...lignes.map((ligne, index) => creerLigne(ligne, index)));
+  majTotaux();
 }
 
 function creerLigne(ligne, index) {
@@ -489,8 +507,15 @@ function creerCellule(ligne, jour, index) {
   enveloppe.addEventListener('contextmenu', (e) => ouvrirMenu(e, ligne, jour));
   enveloppe.addEventListener('mouseenter', () => afficherInfobulle(ligne, jour, enveloppe));
   enveloppe.addEventListener('mouseleave', cacherInfobulle);
-  champ.addEventListener('focus', () => afficherInfobulle(ligne, jour, enveloppe));
-  champ.addEventListener('blur', cacherInfobulle);
+  champ.addEventListener('focus', () => {
+    // On enlève le "-" pour pouvoir écrire directement dans la case
+    if (!estEnMarche(ligne, jour) && champ.value === '-') champ.value = '';
+    afficherInfobulle(ligne, jour, enveloppe);
+  });
+  champ.addEventListener('blur', () => {
+    cacherInfobulle();
+    validerSaisie(ligne, jour); // remet le "-" si la case est restée vide
+  });
 
   majCellule(ligne, jour);
   return enveloppe;
@@ -508,7 +533,8 @@ function majCellule(ligne, jour) {
   c.champ.readOnly = enMarche;
   c.badge.hidden = !enMarche;
   c.marque.hidden = !donnee.c;
-  c.champ.value = enMarche ? formaterChrono(secondesChrono()) : formaterHeures(donnee.s);
+  c.champ.classList.toggle('vide', !enMarche && !donnee.s);
+  c.champ.value = enMarche ? formaterChrono(secondesChrono()) : texteCase(donnee.s);
 }
 
 function avertir(texte) {
@@ -529,13 +555,18 @@ function validerSaisie(ligne, jour) {
   const donnee = ligne.jours[jour];
   if (!c) return;
 
-  // Texte inchangé : on garde les secondes exactes (ex. après un chrono)
-  if (c.champ.value.trim() === formaterHeures(donnee.s)) {
+  // Pendant un chrono, la case est en lecture seule : rien à valider
+  if (estEnMarche(ligne, jour)) return;
+
+  const texte = c.champ.value.trim();
+
+  // Texte inchangé ("-" laissé tel quel, ou temps venant d'un chrono) : on garde les secondes exactes
+  if (texte === texteCase(donnee.s) || (texte === '' && !donnee.s)) {
     majCellule(ligne, jour);
     return;
   }
 
-  const heures = analyserHeures(c.champ.value);
+  const heures = texte === '-' ? 0 : analyserHeures(texte);
   if (heures === null) {
     avertir(`Écris un nombre d'heures entre 0 et ${MAX_HEURES_PAR_CASE}, par exemple 1,5 (1 h 30) ou 0,25 (15 min).`);
     majCellule(ligne, jour); // remet l'ancienne valeur
@@ -544,6 +575,7 @@ function validerSaisie(ligne, jour) {
 
   donnee.s = Math.round(heures * 3600);
   majCellule(ligne, jour);
+  majTotaux();
   planifierSauvegarde();
 }
 
@@ -627,6 +659,7 @@ function arreterChrono() {
   chrono = null;
   arreterMinuteur();
   if (ligne) majCellule(ligne, jour);
+  majTotaux(); // le total du jour se met à jour quand le chrono s'arrête
 }
 
 function demarrerChrono(ligne, jour) {
@@ -767,6 +800,49 @@ function afficherInfobulle(ligne, jour, enveloppe) {
 
 function cacherInfobulle() {
   infobulle.hidden = true;
+}
+
+/* ----------------------------------------------------------
+   Plein écran (cache le bandeau du navigateur)
+   Échap ou un 2e clic sur le bouton pour en sortir.
+   ---------------------------------------------------------- */
+const boutonPleinEcran = $('#btn-plein-ecran');
+const racine = document.documentElement;
+
+function elementPleinEcran() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function majBoutonPleinEcran() {
+  const actif = Boolean(elementPleinEcran());
+  const texte = actif ? 'Quitter le plein écran' : 'Passer en plein écran';
+  boutonPleinEcran.classList.toggle('actif', actif);
+  boutonPleinEcran.title = texte;
+  boutonPleinEcran.setAttribute('aria-label', texte);
+}
+
+const pleinEcranPossible =
+  (document.fullscreenEnabled || document.webkitFullscreenEnabled) &&
+  (racine.requestFullscreen || racine.webkitRequestFullscreen);
+
+if (pleinEcranPossible) {
+  boutonPleinEcran.hidden = false;
+
+  boutonPleinEcran.addEventListener('click', async () => {
+    try {
+      if (elementPleinEcran()) {
+        await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        await (racine.requestFullscreen || racine.webkitRequestFullscreen).call(racine);
+      }
+    } catch (err) {
+      console.error(err);
+      avertir('Le plein écran n\'est pas disponible dans ce navigateur.');
+    }
+  });
+
+  document.addEventListener('fullscreenchange', majBoutonPleinEcran);
+  document.addEventListener('webkitfullscreenchange', majBoutonPleinEcran);
 }
 
 /* ----------------------------------------------------------
