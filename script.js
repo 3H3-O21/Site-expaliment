@@ -69,7 +69,7 @@ function afficher(id, texte, type) {
   });
 
   // Nettoyage : messages et champs des autres écrans
-  document.querySelectorAll('.message').forEach((m) => {
+  document.querySelectorAll('.message:not([data-verif])').forEach((m) => {
     m.textContent = '';
     m.className = 'message';
   });
@@ -1107,7 +1107,7 @@ $('#btn-deconnexion').addEventListener('click', async () => {
 onAuthStateChanged(auth, async (utilisateur) => {
   if (!utilisateur) {
     reinitialiserFeuille();
-    if (vueActive() === 'app') afficher('accueil');
+    if (['app', 'todo'].includes(vueActive())) afficher('accueil');
     return;
   }
 
@@ -1121,13 +1121,18 @@ onAuthStateChanged(auth, async (utilisateur) => {
   const courant = auth.currentUser;
   if (!courant) return;
 
-  $('#app-courriel').textContent = courant.email;
+  const pastille = $('#app-courriel');
+  pastille.textContent = (courant.email || '?').charAt(0).toUpperCase();
+  pastille.title = courant.email;
+  pastille.setAttribute('aria-label', `Connecté : ${courant.email}`);
   afficher('app');
 
   const verif = $('#app-verif');
   const boutonRenvoi = $('#btn-renvoyer-verif');
-  if (courant.emailVerified) {
+    if (courant.emailVerified) {
     boutonRenvoi.hidden = true;
+    verif.textContent = '';
+    verif.className = 'message';
   } else {
     verif.textContent = 'Confirme ton courriel : un lien de vérification t\'a été envoyé.';
     verif.className = 'message message--info';

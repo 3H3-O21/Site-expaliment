@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="outils.css">
 </head>
 <body>
   <main>
@@ -87,8 +88,9 @@
         <button type="button" class="btn-reglages" id="btn-reglages" title="Réglages des couleurs" aria-label="Réglages des couleurs" aria-expanded="false" aria-controls="panneau-reglages">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+        <button type="button" class="btn btn--contour-clair btn-outils" id="btn-outils" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-outils">Outils <span class="chevron" aria-hidden="true">▾</span></button>
         <span class="statut" id="statut-enregistrement" aria-live="polite"></span>
-        <span class="app-courriel" id="app-courriel"></span>
+        <span class="pastille" id="app-courriel" role="img"></span>
         <button type="button" class="btn btn--contour-clair" id="btn-deconnexion">Déconnexion</button>
       </header>
 
@@ -148,6 +150,31 @@
       </button>
 
     </section>
+        <!-- ========== 6. TO-DO LISTE ========== -->
+    <section class="view view--app" id="todo">
+      <header class="app-entete todo-entete">
+        <button type="button" class="btn btn--contour-clair" data-goto="app">← Retour au suivi</button>
+        <h1 class="todo-titre">To-do liste</h1>
+        <span class="statut" id="statut-todo" aria-live="polite"></span>
+      </header>
+
+      <div class="todo-corps">
+        <form class="todo-ajout" id="form-todo">
+          <label for="todo-texte" class="sr-only">Nouvelle tâche</label>
+          <input type="text" id="todo-texte" maxlength="200" autocomplete="off" placeholder="Nouvelle tâche…">
+          <button type="submit" class="btn btn--bordure">Ajouter</button>
+        </form>
+
+        <p class="message" id="message-todo" role="status" aria-live="polite"></p>
+
+        <ul class="todo-liste" id="todo-liste"></ul>
+
+        <div class="todo-pied">
+          <span id="todo-compteur"></span>
+          <button type="button" class="btn btn--bordure" id="btn-todo-nettoyer" hidden>Retirer les tâches terminées</button>
+        </div>
+      </div>
+    </section>
 
   </main>
 
@@ -198,8 +225,31 @@
       </div>
     </form>
   </dialog>
+  <!-- Menu du bouton « Outils » -->
+  <div class="menu-contextuel menu-outils" id="menu-outils" role="menu" hidden>
+    <button type="button" role="menuitem" data-goto="todo">To-do liste</button>
+    <button type="button" role="menuitem" id="btn-ouvrir-convertisseur">Minutes en heures</button>
+  </div>
 
+  <!-- Convertisseur : heures et minutes -> heures décimales -->
+  <dialog id="dialogue-convertisseur" aria-labelledby="titre-convertisseur">
+    <form id="form-convertisseur">
+      <h2 id="titre-convertisseur">Minutes en heures</h2>
+      <label for="valeur-convertisseur" class="sr-only">Temps à convertir</label>
+      <input type="text" id="valeur-convertisseur" inputmode="decimal" autocomplete="off" placeholder="Ex. : 1,45">
+      <div class="convertisseur-resultat" aria-live="polite">
+        <strong id="resultat-convertisseur">-</strong>
+        <span class="convertisseur-detail" id="detail-convertisseur"></span>
+      </div>
+      <p class="message" id="message-convertisseur" role="status"></p>
+      <div class="dialogue-actions">
+        <button type="button" class="btn btn--contour" id="btn-fermer-convertisseur">Fermer</button>
+        <button type="button" class="btn btn--olive" id="btn-copier-resultat" disabled>Copier</button>
+      </div>
+    </form>
+  </dialog>
   <!-- type="module" : nécessaire pour importer Firebase -->
   <script type="module" src="script.js"></script>
+  <script type="module" src="outils.js"></script>
 </body>
 </html>
