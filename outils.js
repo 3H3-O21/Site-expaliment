@@ -158,9 +158,13 @@ boutonCopier.addEventListener('click', async () => {
 });
 
 /* ==========================================================
-   TO-DO LISTE
-   Enregistrée dans Firestore (document utilisateurs/{uid}, champ « taches »).
-   Format : [{ id, texte, fait }]
+   TO-DO LISTE PAR PROJET
+   Enregistrée dans Firestore (document utilisateurs/{uid}, champ « projets »).
+   Format : [{ id, nom, taches: [{ id, texte, fait }] }]
+
+   Ancien format : si le compte n'a que l'ancien champ « taches », ces tâches
+   sont reprises dans un projet « Général » (rien n'est perdu). L'ancien champ
+   n'est pas supprimé de Firestore, il n'est simplement plus utilisé.
    ========================================================== */
 const listeTodo = $('#todo-liste');
 const formTodo = $('#form-todo');
@@ -168,9 +172,25 @@ const champTodo = $('#todo-texte');
 const compteurTodo = $('#todo-compteur');
 const boutonNettoyer = $('#btn-todo-nettoyer');
 
+const listeProjets = $('#projet-liste');
+const formProjet = $('#form-projet');
+const champProjet = $('#projet-nom');
+const titreProjet = $('#todo-projet-titre');
+const boutonRenommer = $('#btn-projet-renommer');
+const boutonSupprimerProjet = $('#btn-projet-supprimer');
+
+const dialogueProjet = $('#dialogue-projet');
+const formRenommer = $('#form-renommer');
+const champRenommer = $('#valeur-renommer');
+
+const MAX_PROJETS = 50;
+const NOM_PROJET_MAX = 60;
+const CLE_PROJET_ACTIF = 'todo-projet-actif';
+
 let uid = null;            // utilisateur connecté
-let chargementOk = false;  // les tâches ont bien été lues (sinon on n'enregistre rien)
-let taches = [];
+let chargementOk = false;  // les projets ont bien été lus (sinon on n'enregistre rien)
+let projets = [];
+let projetActifId = null;
 let delaiMessage = null;
 
 function majStatutTodo(texte) {
@@ -190,7 +210,10 @@ function messageTodo(texte, type = 'erreur') {
   }
 }
 
-// Nettoie les données lues dans Firestore (au cas où elles seraient incomplètes)
+/* ----------------------------------------------------------
+   Données : nettoyage, projet actif
+   ---------------------------------------------------------- */
+// Nettoie les tâches lues dans Firestore (au cas où elles seraient incomplètes)
 function normaliserTaches(brut) {
   if (!Array.isArray(brut)) return [];
   return brut
@@ -202,11 +225,67 @@ function normaliserTaches(brut) {
     .filter((t) => t.texte.trim());
 }
 
-async function enregistrerTaches() {
+function nettoyerNom(texte) {
+  return String(texte ?? '').trim().replace(/\s+/g, ' ').slice(0, NOM_PROJET_MAX);
+}
+
+function projetGeneral(taches = []) {
+  // id fixe : le projet repris de l'ancien format garde la même identité d'une visite à l'autre
+  return { id: 'general', nom: 'Général', taches };
+}
+
+function normaliserProjets(donnees) {
+  // Ancien format (champ « taches » seulement) : tout va dans « Général »
+  if (!Array.isArray(donnees.projets)) {
+    return [projetGeneral(normaliserTaches(donnees.taches))];
+  }
+
+  const vus = new Set();
+  const liste = donnees.projets
+    .filter((p) => p && typeof p === 'object')
+    .map((p) => {
+      let id = typeof p.id === 'string' && p.id ? p.id : genererId();
+      if (vus.has(id)) id = genererId();
+      vus.add(id);
+      return { id, nom: nettoyerNom(p.nom) || 'Sans nom', taches: normaliserTaches(p.taches) };
+    });
+
+  if (!liste.length) liste.push(projetGeneral());
+  return liste;
+}
+
+function projetActif() {
+  return projets.find((p) => p.id === projetActifId) || null;
+}
+
+function lireProjetLocal() {
+  try {
+    return localStorage.getItem(CLE_PROJET_ACTIF);
+  } catch {
+    return null;
+  }
+}
+
+function sauverProjetLocal(id) {
+  try {
+    localStorage.setItem(CLE_PROJET_ACTIF, id);
+  } catch {
+    // stockage indisponible (navigation privée, etc.) : sans importance
+  }
+}
+
+function choisirProjet(id) {
+  const projet = projets.find((p) => p.id === id) || projets[0] || null;
+  projetActifId = projet ? projet.id : null;
+  if (projet) sauverProjetLocal(projet.id);
+  rendreTout();
+}
+
+async function enregistrerProjets() {
   if (!uid || !chargementOk) return;
   majStatutTodo('Enregistrement…');
   try {
-    await setDoc(doc(db, 'utilisateurs', uid), { taches }, { merge: true });
+    await setDoc(doc(db, 'utilisateurs', uid), { projets }, { merge: true });
     majStatutTodo('Enregistré');
   } catch (err) {
     console.error(err);
@@ -215,7 +294,50 @@ async function enregistrerTaches() {
   }
 }
 
-function creerItem(tache) {
+/* ----------------------------------------------------------
+   Affichage : colonne des projets (à gauche)
+   ---------------------------------------------------------- */
+function nbAFaire(projet) {
+  return projet.taches.filter((t) => !t.fait).length;
+}
+
+function creerProjetItem(projet) {
+  const item = document.createElement('li');
+
+  const bouton = document.createElement('button');
+  bouton.type = 'button';
+  bouton.className = 'projet-item';
+  if (projet.id === projetActifId) bouton.setAttribute('aria-current', 'true');
+  bouton.addEventListener('click', () => choisirProjet(projet.id));
+
+  const nom = document.createElement('span');
+  nom.className = 'projet-nom';
+  nom.textContent = projet.nom;
+  nom.title = projet.nom;
+
+  bouton.append(nom);
+
+  const reste = nbAFaire(projet);
+  if (reste) {
+    const compte = document.createElement('span');
+    compte.className = 'projet-compte';
+    compte.textContent = String(reste);
+    compte.title = reste === 1 ? '1 tâche à faire' : `${reste} tâches à faire`;
+    bouton.append(compte);
+  }
+
+  item.append(bouton);
+  return item;
+}
+
+function rendreProjets() {
+  listeProjets.replaceChildren(...projets.map(creerProjetItem));
+}
+
+/* ----------------------------------------------------------
+   Affichage : tâches du projet choisi
+   ---------------------------------------------------------- */
+function creerItem(tache, projet) {
   const item = document.createElement('li');
   item.className = 'todo-item' + (tache.fait ? ' fait' : '');
 
@@ -228,8 +350,8 @@ function creerItem(tache) {
   caseACocher.checked = tache.fait;
   caseACocher.addEventListener('change', () => {
     tache.fait = caseACocher.checked;
-    rendreTodo();
-    enregistrerTaches();
+    rendreTout();
+    enregistrerProjets();
   });
 
   const texte = document.createElement('label');
@@ -244,26 +366,35 @@ function creerItem(tache) {
   supprimer.title = 'Supprimer la tâche';
   supprimer.setAttribute('aria-label', `Supprimer la tâche : ${tache.texte}`);
   supprimer.addEventListener('click', () => {
-    taches = taches.filter((t) => t.id !== tache.id);
-    rendreTodo();
-    enregistrerTaches();
+    projet.taches = projet.taches.filter((t) => t.id !== tache.id);
+    rendreTout();
+    enregistrerProjets();
   });
 
   item.append(caseACocher, texte, supprimer);
   return item;
 }
 
-function rendreTodo() {
+function rendreTaches() {
+  const projet = projetActif();
+  const taches = projet ? projet.taches : [];
+
+  titreProjet.textContent = projet ? projet.nom : '';
+  boutonRenommer.disabled = !projet;
+  // On garde toujours au moins un projet
+  boutonSupprimerProjet.disabled = !projet || projets.length < 2;
+  boutonSupprimerProjet.title = projets.length < 2 ? 'Il faut garder au moins un projet' : 'Supprimer ce projet';
+
   const aFaire = taches.filter((t) => !t.fait);
   const faites = taches.filter((t) => t.fait);
   const ordre = [...aFaire, ...faites]; // les tâches terminées descendent en bas
 
   if (ordre.length) {
-    listeTodo.replaceChildren(...ordre.map(creerItem));
+    listeTodo.replaceChildren(...ordre.map((t) => creerItem(t, projet)));
   } else {
     const vide = document.createElement('li');
     vide.className = 'todo-vide';
-    vide.textContent = 'Aucune tâche pour l\'instant.';
+    vide.textContent = projet ? 'Aucune tâche dans ce projet pour l\'instant.' : '';
     listeTodo.replaceChildren(vide);
   }
 
@@ -274,39 +405,124 @@ function rendreTodo() {
   boutonNettoyer.hidden = !faites.length;
 }
 
+function rendreTout() {
+  rendreProjets();
+  rendreTaches();
+}
+
+/* ----------------------------------------------------------
+   Actions : tâches
+   ---------------------------------------------------------- */
 formTodo.addEventListener('submit', (e) => {
   e.preventDefault();
 
   const texte = champTodo.value.trim();
   if (!texte) return;
 
-  if (!chargementOk) {
+  const projet = projetActif();
+  if (!chargementOk || !projet) {
     messageTodo('Les tâches sont en cours de chargement, réessaie dans un instant.');
     return;
   }
 
-  taches.unshift({ id: genererId(), texte, fait: false }); // la plus récente en haut
+  projet.taches.unshift({ id: genererId(), texte, fait: false }); // la plus récente en haut
   champTodo.value = '';
   champTodo.focus();
 
-  rendreTodo();
-  enregistrerTaches();
+  rendreTout();
+  enregistrerProjets();
 });
 
 boutonNettoyer.addEventListener('click', () => {
-  if (!confirm('Retirer toutes les tâches terminées ?')) return;
-  taches = taches.filter((t) => !t.fait);
-  rendreTodo();
-  enregistrerTaches();
+  const projet = projetActif();
+  if (!projet) return;
+  if (!confirm('Retirer toutes les tâches terminées de ce projet ?')) return;
+  projet.taches = projet.taches.filter((t) => !t.fait);
+  rendreTout();
+  enregistrerProjets();
 });
 
-// Charge les tâches de la personne connectée (et vide la liste à la déconnexion)
+/* ----------------------------------------------------------
+   Actions : projets (ajouter, renommer, supprimer)
+   ---------------------------------------------------------- */
+formProjet.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const nom = nettoyerNom(champProjet.value);
+  if (!nom) return;
+
+  if (!chargementOk) {
+    messageTodo('Les projets sont en cours de chargement, réessaie dans un instant.');
+    return;
+  }
+  if (projets.length >= MAX_PROJETS) {
+    messageTodo(`Tu as atteint le maximum de ${MAX_PROJETS} projets.`);
+    return;
+  }
+
+  const projet = { id: genererId(), nom, taches: [] };
+  projets.push(projet); // en bas de la liste, dans l'ordre de création
+  champProjet.value = '';
+
+  choisirProjet(projet.id);
+  champTodo.focus(); // on peut écrire la première tâche tout de suite
+  enregistrerProjets();
+});
+
+function ouvrirRenommer() {
+  const projet = projetActif();
+  if (!projet) return;
+  champRenommer.value = projet.nom;
+  dialogueProjet.showModal();
+  champRenommer.focus();
+  champRenommer.select();
+}
+
+boutonRenommer.addEventListener('click', ouvrirRenommer);
+
+formRenommer.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const projet = projetActif();
+  const nom = nettoyerNom(champRenommer.value);
+  if (!projet || !nom) return;
+
+  projet.nom = nom;
+  dialogueProjet.close();
+  rendreTout();
+  enregistrerProjets();
+});
+
+$('#btn-annuler-renommer').addEventListener('click', () => dialogueProjet.close());
+
+boutonSupprimerProjet.addEventListener('click', () => {
+  const projet = projetActif();
+  if (!projet || projets.length < 2) return;
+
+  if (projet.taches.length) {
+    const n = projet.taches.length;
+    const texte = `Supprimer le projet « ${projet.nom} » et ses ${n} ${n === 1 ? 'tâche' : 'tâches'} ?`;
+    if (!confirm(texte)) return;
+  }
+
+  const index = projets.findIndex((p) => p.id === projet.id);
+  projets = projets.filter((p) => p.id !== projet.id);
+
+  // On passe au projet voisin
+  const voisin = projets[Math.min(index, projets.length - 1)];
+  choisirProjet(voisin.id);
+  enregistrerProjets();
+});
+
+/* ----------------------------------------------------------
+   Chargement : à la connexion (et on vide tout à la déconnexion)
+   ---------------------------------------------------------- */
 onAuthStateChanged(auth, async (utilisateur) => {
   if (!utilisateur) {
     uid = null;
     chargementOk = false;
-    taches = [];
-    rendreTodo();
+    projets = [];
+    projetActifId = null;
+    rendreTout();
     majStatutTodo('');
     return;
   }
@@ -314,14 +530,15 @@ onAuthStateChanged(auth, async (utilisateur) => {
   const moi = utilisateur.uid;
   uid = moi;
   chargementOk = false;
-  taches = [];
-  rendreTodo();
+  projets = [];
+  projetActifId = null;
+  rendreTout();
 
   try {
     const instantane = await getDoc(doc(db, 'utilisateurs', moi));
     if (uid !== moi) return; // quelqu'un d'autre s'est connecté entre-temps
     const donnees = instantane.exists() ? instantane.data() : {};
-    taches = normaliserTaches(donnees.taches);
+    projets = normaliserProjets(donnees);
     chargementOk = true;
   } catch (err) {
     // On n'enregistre rien tant que la lecture a échoué : on ne risque pas d'écraser les vraies tâches.
@@ -330,8 +547,9 @@ onAuthStateChanged(auth, async (utilisateur) => {
     return;
   }
 
-  rendreTodo();
+  // Dernier projet ouvert sur cet appareil (sinon le premier)
+  choisirProjet(lireProjetLocal());
   majStatutTodo('');
 });
 
-rendreTodo();
+rendreTout();

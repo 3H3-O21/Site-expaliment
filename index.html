@@ -158,21 +158,45 @@
         <span class="statut" id="statut-todo" aria-live="polite"></span>
       </header>
 
-      <div class="todo-corps">
-        <form class="todo-ajout" id="form-todo">
-          <label for="todo-texte" class="sr-only">Nouvelle tâche</label>
-          <input type="text" id="todo-texte" maxlength="200" autocomplete="off" placeholder="Nouvelle tâche…">
-          <button type="submit" class="btn btn--bordure">Ajouter</button>
-        </form>
+      <div class="todo-mise-en-page">
 
-        <p class="message" id="message-todo" role="status" aria-live="polite"></p>
+        <!-- Colonne de gauche : un projet = une to-do liste -->
+        <aside class="todo-projets" aria-label="Projets">
+          <h2 class="todo-projets-titre">Projets</h2>
+          <ul class="projet-liste" id="projet-liste"></ul>
+          <form class="projet-ajout" id="form-projet">
+            <label for="projet-nom" class="sr-only">Nouveau projet</label>
+            <input type="text" id="projet-nom" maxlength="60" autocomplete="off" placeholder="Nouveau projet…">
+            <button type="submit" class="btn btn--bordure" title="Ajouter le projet" aria-label="Ajouter le projet">+</button>
+          </form>
+        </aside>
 
-        <ul class="todo-liste" id="todo-liste"></ul>
+        <!-- Tâches du projet choisi -->
+        <div class="todo-corps">
+          <div class="todo-projet-entete">
+            <h2 class="todo-projet-titre" id="todo-projet-titre"></h2>
+            <div class="todo-projet-actions">
+              <button type="button" class="btn btn--contour" id="btn-projet-renommer">Renommer</button>
+              <button type="button" class="btn btn--contour" id="btn-projet-supprimer">Supprimer</button>
+            </div>
+          </div>
 
-        <div class="todo-pied">
-          <span id="todo-compteur"></span>
-          <button type="button" class="btn btn--bordure" id="btn-todo-nettoyer" hidden>Retirer les tâches terminées</button>
+          <form class="todo-ajout" id="form-todo">
+            <label for="todo-texte" class="sr-only">Nouvelle tâche</label>
+            <input type="text" id="todo-texte" maxlength="200" autocomplete="off" placeholder="Nouvelle tâche…">
+            <button type="submit" class="btn btn--bordure">Ajouter</button>
+          </form>
+
+          <p class="message" id="message-todo" role="status" aria-live="polite"></p>
+
+          <ul class="todo-liste" id="todo-liste"></ul>
+
+          <div class="todo-pied">
+            <span id="todo-compteur"></span>
+            <button type="button" class="btn btn--bordure" id="btn-todo-nettoyer" hidden>Retirer les tâches terminées</button>
+          </div>
         </div>
+
       </div>
     </section>
 
@@ -248,6 +272,19 @@
       </div>
     </form>
   </dialog>
+  <!-- Fenêtre pour renommer un projet de la to-do liste -->
+  <dialog id="dialogue-projet" aria-labelledby="titre-projet">
+    <form id="form-renommer">
+      <h2 id="titre-projet">Renommer le projet</h2>
+      <label for="valeur-renommer" class="sr-only">Nom du projet</label>
+      <input type="text" id="valeur-renommer" maxlength="60" autocomplete="off">
+      <div class="dialogue-actions">
+        <button type="button" class="btn btn--contour" id="btn-annuler-renommer">Annuler</button>
+        <button type="submit" class="btn btn--olive">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- type="module" : nécessaire pour importer Firebase -->
   <script type="module" src="script.js"></script>
   <script type="module" src="outils.js"></script>

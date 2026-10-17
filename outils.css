@@ -203,3 +203,163 @@
     height: 2.3rem;
   }
 }
+/* ----------------------------------------------------------
+   To-do liste : colonne des projets à gauche + tâches à droite
+   ---------------------------------------------------------- */
+.todo-mise-en-page {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  width: min(100%, 64rem);
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+/* Le contenu des tâches n'a plus besoin de sa propre largeur ni de ses marges */
+.todo-mise-en-page .todo-corps {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.todo-projets {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid var(--encre);
+  border-radius: 12px;
+}
+
+.todo-projets-titre {
+  font-family: 'Libre Baskerville', serif;
+  font-weight: 400;
+  font-size: 1.05rem;
+}
+
+.projet-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.projet-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  text-align: left;
+  color: var(--encre);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.projet-item:hover { background: rgba(0, 0, 0, 0.08); }
+.projet-item:focus-visible {
+  outline: 2px solid var(--encre);
+  outline-offset: 1px;
+}
+.projet-item[aria-current="true"] {
+  font-weight: 600;
+  background: var(--olive-clair);
+  border-color: var(--encre);
+}
+
+.projet-nom {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projet-compte {
+  flex: none;
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--beige);
+  background: var(--olive);
+  border-radius: 999px;
+}
+
+.projet-ajout {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.projet-ajout input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+}
+
+.projet-ajout .btn {
+  flex: none;
+  height: 2.6rem;
+  padding: 0 0.9rem;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+/* Titre du projet choisi, avec ses boutons Renommer / Supprimer */
+.todo-projet-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.todo-projet-titre {
+  min-width: 0;
+  font-family: 'Libre Baskerville', serif;
+  font-weight: 400;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  overflow-wrap: anywhere;
+}
+
+.todo-projet-actions {
+  display: flex;
+  flex: none;
+  gap: 0.4rem;
+}
+
+.todo-projet-actions .btn {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.todo-projet-actions .btn:disabled {
+  opacity: 0.5;
+  background: transparent;
+  color: var(--encre);
+  border-color: var(--encre);
+}
+
+/* Petits écrans : les projets passent au-dessus des tâches */
+@media (max-width: 720px) {
+  .todo-mise-en-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .todo-projets { position: static; }
+
+  .projet-liste {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .projet-item { width: auto; max-width: 100%; }
+}
