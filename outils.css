@@ -120,7 +120,7 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  padding: 0.35rem 0.5rem 0.35rem 0.8rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.3rem;
   border: 1px solid var(--encre);
   border-radius: 12px;
 }
@@ -221,7 +221,6 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 1.2rem 0.8rem 2rem;
-  background: rgba(255, 255, 255, 0.28);
   border-right: 1px solid rgba(0, 0, 0, 0.15);
 }
 
@@ -339,8 +338,6 @@
 .todo-projet-entete {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
 }
 
 .todo-projet-titre {
@@ -349,24 +346,6 @@
   font-weight: 400;
   font-size: clamp(1.4rem, 3.5vw, 2rem);
   overflow-wrap: anywhere;
-}
-
-.todo-projet-actions {
-  display: flex;
-  flex: none;
-  gap: 0.4rem;
-}
-
-.todo-projet-actions .btn {
-  font-size: 0.85rem;
-  padding: 0.4rem 0.8rem;
-}
-
-.todo-projet-actions .btn:disabled {
-  opacity: 0.5;
-  background: transparent;
-  color: var(--encre);
-  border-color: var(--encre);
 }
 
 /* Petits écrans : les projets passent au-dessus de la liste */
@@ -383,4 +362,68 @@
   }
 
   .todo-mise-en-page .todo-corps { padding: 1.5rem 1rem 3rem; }
+}
+
+/* ----------------------------------------------------------
+   Menu du clic droit sur un projet
+   ---------------------------------------------------------- */
+.menu-projet {
+  min-width: 11rem;
+}
+
+.menu-projet button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.menu-projet button:disabled:hover {
+  background: none;
+}
+
+/* ----------------------------------------------------------
+   Déplacer les tâches (poignée à gauche de chaque tâche à faire)
+   ---------------------------------------------------------- */
+.todo-poignee,
+.todo-poignee-vide {
+  flex: none;
+  width: 1.5rem;
+  height: 2rem;
+}
+
+.todo-poignee {
+  display: grid;
+  place-items: center;
+  color: var(--encre);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  opacity: 0.4;
+  cursor: grab;
+  touch-action: none; /* le doigt déplace la tâche au lieu de faire défiler la page */
+}
+.todo-poignee:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
+.todo-poignee:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--encre);
+  outline-offset: 1px;
+}
+
+.todo-liste.en-deplacement .todo-item:not(.deplace) {
+  transition: transform 0.15s ease;
+}
+
+.todo-item.deplace {
+  position: relative;
+  z-index: 2;
+  background: var(--beige);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.deplacement-en-cours,
+.deplacement-en-cours * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-liste.en-deplacement .todo-item:not(.deplace) { transition: none; }
 }

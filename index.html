@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="outils.css?v=3">
+  <link rel="stylesheet" href="outils.css?v=4">
 </head>
 <body>
   <main>
@@ -173,10 +173,6 @@
         <div class="todo-corps">
           <div class="todo-projet-entete">
             <h2 class="todo-projet-titre" id="todo-projet-titre"></h2>
-            <div class="todo-projet-actions">
-              <button type="button" class="btn btn--contour" id="btn-projet-renommer">Renommer</button>
-              <button type="button" class="btn btn--contour" id="btn-projet-supprimer">Supprimer</button>
-            </div>
           </div>
 
           <form class="todo-ajout" id="form-todo">
@@ -247,6 +243,9 @@
       </div>
     </form>
   </dialog>
+  <!-- Menu du clic droit sur un projet de la to-do liste -->
+  <div class="menu-contextuel menu-projet" id="menu-projet" role="menu" hidden></div>
+
   <!-- Menu du bouton « Outils » -->
   <div class="menu-contextuel menu-outils" id="menu-outils" role="menu" hidden>
     <button type="button" role="menuitem" data-goto="todo">To-do liste</button>
@@ -285,6 +284,6 @@
 
   <!-- type="module" : nécessaire pour importer Firebase -->
   <script type="module" src="script.js"></script>
-  <script type="module" src="outils.js?v=3"></script>
+  <script type="module" src="outils.js?v=4"></script>
 </body>
 </html>

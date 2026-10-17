@@ -175,8 +175,7 @@ const boutonNettoyer = $('#btn-todo-nettoyer');
 const listeProjets = $('#projet-liste');
 const boutonAjouterProjet = $('#btn-projet-ajouter');
 const titreProjet = $('#todo-projet-titre');
-const boutonRenommer = $('#btn-projet-renommer');
-const boutonSupprimerProjet = $('#btn-projet-supprimer');
+const menuProjet = $('#menu-projet');
 
 const dialogueProjet = $('#dialogue-projet');
 const formRenommer = $('#form-renommer');
@@ -194,6 +193,7 @@ let projets = [];
 let projetActifId = null;
 let delaiMessage = null;
 let modeProjet = 'creer'; // la fenêtre sert à créer ou à renommer
+let cibleProjet = null;   // projet visé par « Renommer »
 
 function majStatutTodo(texte) {
   $('#statut-todo').textContent = texte;
@@ -311,6 +311,7 @@ function creerProjetItem(projet) {
   bouton.className = 'projet-item';
   if (projet.id === projetActifId) bouton.setAttribute('aria-current', 'true');
   bouton.addEventListener('click', () => choisirProjet(projet.id));
+  bouton.addEventListener('contextmenu', (e) => ouvrirMenuProjet(e, projet));
 
   const icone = document.createElement('span');
   icone.className = 'projet-icone';
@@ -344,9 +345,172 @@ function rendreProjets() {
 /* ----------------------------------------------------------
    Affichage : tâches du projet choisi
    ---------------------------------------------------------- */
+/* ----------------------------------------------------------
+   Déplacer les tâches à la main (souris, doigt ou clavier)
+   Seules les tâches à faire se déplacent : les tâches terminées restent en bas.
+   ---------------------------------------------------------- */
+const ICONE_POIGNEE =
+  '<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true" focusable="false">' +
+  '<circle cx="2.5" cy="3" r="1.4" fill="currentColor"/><circle cx="7.5" cy="3" r="1.4" fill="currentColor"/>' +
+  '<circle cx="2.5" cy="8" r="1.4" fill="currentColor"/><circle cx="7.5" cy="8" r="1.4" fill="currentColor"/>' +
+  '<circle cx="2.5" cy="13" r="1.4" fill="currentColor"/><circle cx="7.5" cy="13" r="1.4" fill="currentColor"/>' +
+  '</svg>';
+
+let glissement = null; // { items, depart, cible, rects, ecart, poignee, pointerId, departY, clientY, raf }
+
+function deplacerTache(id, nouvelIndex) {
+  const projet = projetActif();
+  if (!projet) return;
+
+  const aFaire = projet.taches.filter((t) => !t.fait);
+  const faites = projet.taches.filter((t) => t.fait);
+  const de = aFaire.findIndex((t) => t.id === id);
+  if (de < 0) return;
+
+  const [tache] = aFaire.splice(de, 1);
+  aFaire.splice(Math.max(0, Math.min(nouvelIndex, aFaire.length)), 0, tache);
+  projet.taches = [...aFaire, ...faites];
+
+  rendreTout();
+  enregistrerProjets();
+}
+
+function positionnerGlissement() {
+  const g = glissement;
+  const dy = g.clientY + window.scrollY - g.departY;
+  const moi = g.rects[g.depart];
+  const centre = moi.haut + moi.hauteur / 2 + dy;
+
+  // Nouvelle place = nombre de tâches dont le centre est plus haut que celui de la tâche déplacée
+  let cible = 0;
+  g.rects.forEach((r, i) => {
+    if (i !== g.depart && r.haut + r.hauteur / 2 < centre) cible++;
+  });
+  g.cible = cible;
+
+  const pas = moi.hauteur + g.ecart;
+  g.items.forEach((el, i) => {
+    if (i === g.depart) {
+      el.style.transform = `translateY(${dy}px)`;
+      return;
+    }
+    let decalage = 0;
+    if (i > g.depart && i <= cible) decalage = -pas;
+    else if (i < g.depart && i >= cible) decalage = pas;
+    el.style.transform = decalage ? `translateY(${decalage}px)` : '';
+  });
+}
+
+// Défile la page quand on tire une tâche près du haut ou du bas de l'écran
+function suivreGlissement() {
+  if (!glissement) return;
+  const g = glissement;
+  const marge = 60;
+  if (g.clientY < marge) window.scrollBy(0, -Math.ceil((marge - g.clientY) / 4));
+  else if (g.clientY > window.innerHeight - marge) window.scrollBy(0, Math.ceil((g.clientY - (window.innerHeight - marge)) / 4));
+  positionnerGlissement();
+  g.raf = requestAnimationFrame(suivreGlissement);
+}
+
+function demarrerGlissement(e, item) {
+  if (glissement || (e.pointerType === 'mouse' && e.button !== 0)) return;
+
+  const items = [...listeTodo.querySelectorAll('.todo-item:not(.fait)')];
+  const depart = items.indexOf(item);
+  if (depart < 0 || items.length < 2) return;
+
+  e.preventDefault();
+  const poignee = e.currentTarget;
+  poignee.setPointerCapture(e.pointerId);
+
+  const defilement = window.scrollY;
+  glissement = {
+    items,
+    depart,
+    cible: depart,
+    rects: items.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { haut: r.top + defilement, hauteur: r.height };
+    }),
+    ecart: parseFloat(getComputedStyle(listeTodo).rowGap) || 0,
+    poignee,
+    pointerId: e.pointerId,
+    departY: e.clientY + defilement,
+    clientY: e.clientY,
+    raf: 0
+  };
+
+  item.classList.add('deplace');
+  listeTodo.classList.add('en-deplacement');
+  document.body.classList.add('deplacement-en-cours');
+  suivreGlissement();
+}
+
+function terminerGlissement(annuler = false) {
+  const g = glissement;
+  if (!g) return;
+  glissement = null;
+
+  cancelAnimationFrame(g.raf);
+  try {
+    g.poignee.releasePointerCapture(g.pointerId);
+  } catch {
+    // déjà relâché : sans importance
+  }
+
+  g.items.forEach((el) => {
+    el.style.transform = '';
+    el.classList.remove('deplace');
+  });
+  listeTodo.classList.remove('en-deplacement');
+  document.body.classList.remove('deplacement-en-cours');
+
+  if (annuler || g.cible === g.depart) return;
+  deplacerTache(g.items[g.depart].dataset.id, g.cible);
+}
+
+function creerPoignee(tache, item) {
+  const poignee = document.createElement('button');
+  poignee.type = 'button';
+  poignee.className = 'todo-poignee';
+  poignee.title = 'Glisser pour déplacer';
+  poignee.setAttribute('aria-label', `Déplacer la tâche : ${tache.texte} (flèches haut et bas)`);
+  poignee.innerHTML = ICONE_POIGNEE; // texte fixe défini plus haut, aucune donnée d'utilisateur
+
+  poignee.addEventListener('pointerdown', (e) => demarrerGlissement(e, item));
+  poignee.addEventListener('pointermove', (e) => {
+    if (glissement && glissement.pointerId === e.pointerId) glissement.clientY = e.clientY;
+  });
+  poignee.addEventListener('pointerup', (e) => {
+    if (glissement && glissement.pointerId === e.pointerId) terminerGlissement(false);
+  });
+  poignee.addEventListener('pointercancel', () => terminerGlissement(true));
+
+  // Au clavier : flèche haut ou bas sur la poignée
+  poignee.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+
+    const projet = projetActif();
+    if (!projet) return;
+    const aFaire = projet.taches.filter((t) => !t.fait);
+    const i = aFaire.findIndex((t) => t.id === tache.id);
+    const cible = i + (e.key === 'ArrowUp' ? -1 : 1);
+    if (i < 0 || cible < 0 || cible >= aFaire.length) return;
+
+    deplacerTache(tache.id, cible);
+    const nouvelItem = [...listeTodo.children].find((li) => li.dataset.id === tache.id);
+    const nouvellePoignee = nouvelItem && nouvelItem.querySelector('.todo-poignee');
+    if (nouvellePoignee) nouvellePoignee.focus();
+  });
+
+  return poignee;
+}
+
 function creerItem(tache, projet) {
   const item = document.createElement('li');
   item.className = 'todo-item' + (tache.fait ? ' fait' : '');
+  item.dataset.id = tache.id;
 
   const idCase = `todo-case-${tache.id}`;
 
@@ -378,7 +542,16 @@ function creerItem(tache, projet) {
     enregistrerProjets();
   });
 
-  item.append(caseACocher, texte, supprimer);
+  // Tâche à faire : poignée pour la déplacer. Tâche terminée : espace vide pour garder l'alignement.
+  let poignee;
+  if (tache.fait) {
+    poignee = document.createElement('span');
+    poignee.className = 'todo-poignee-vide';
+  } else {
+    poignee = creerPoignee(tache, item);
+  }
+
+  item.append(poignee, caseACocher, texte, supprimer);
   return item;
 }
 
@@ -387,10 +560,6 @@ function rendreTaches() {
   const taches = projet ? projet.taches : [];
 
   titreProjet.textContent = projet ? projet.nom : '';
-  boutonRenommer.disabled = !projet;
-  // On garde toujours au moins un projet
-  boutonSupprimerProjet.disabled = !projet || projets.length < 2;
-  boutonSupprimerProjet.title = projets.length < 2 ? 'Il faut garder au moins un projet' : 'Supprimer ce projet';
 
   const aFaire = taches.filter((t) => !t.fait);
   const faites = taches.filter((t) => t.fait);
@@ -452,9 +621,7 @@ boutonNettoyer.addEventListener('click', () => {
 /* ----------------------------------------------------------
    Actions : projets (ajouter, renommer, supprimer)
    ---------------------------------------------------------- */
-function ouvrirDialogueProjet(mode) {
-  const projet = projetActif();
-
+function ouvrirDialogueProjet(mode, projet = null) {
   if (mode === 'renommer' && !projet) return;
   if (mode === 'creer') {
     if (!chargementOk) {
@@ -468,6 +635,7 @@ function ouvrirDialogueProjet(mode) {
   }
 
   modeProjet = mode;
+  cibleProjet = projet;
   titreDialogueProjet.textContent = mode === 'creer' ? 'Nouveau projet' : 'Renommer le projet';
   boutonValiderProjet.textContent = mode === 'creer' ? 'Créer' : 'Enregistrer';
   champRenommer.value = mode === 'creer' ? '' : projet.nom;
@@ -478,7 +646,6 @@ function ouvrirDialogueProjet(mode) {
 }
 
 boutonAjouterProjet.addEventListener('click', () => ouvrirDialogueProjet('creer'));
-boutonRenommer.addEventListener('click', () => ouvrirDialogueProjet('renommer'));
 
 formRenommer.addEventListener('submit', (e) => {
   e.preventDefault(); // la fenêtre se ferme nous-mêmes, la page ne se recharge jamais
@@ -496,9 +663,8 @@ formRenommer.addEventListener('submit', (e) => {
     choisirProjet(projet.id);
     champTodo.focus(); // on peut écrire la première tâche tout de suite
   } else {
-    const projet = projetActif();
-    if (!projet) return;
-    projet.nom = nom;
+    if (!cibleProjet || !projets.includes(cibleProjet)) return;
+    cibleProjet.nom = nom;
     dialogueProjet.close();
     rendreTout();
   }
@@ -507,9 +673,8 @@ formRenommer.addEventListener('submit', (e) => {
 
 $('#btn-annuler-renommer').addEventListener('click', () => dialogueProjet.close());
 
-boutonSupprimerProjet.addEventListener('click', () => {
-  const projet = projetActif();
-  if (!projet || projets.length < 2) return;
+function supprimerProjet(projet) {
+  if (!projets.includes(projet) || projets.length < 2) return;
 
   if (projet.taches.length) {
     const n = projet.taches.length;
@@ -517,14 +682,77 @@ boutonSupprimerProjet.addEventListener('click', () => {
     if (!confirm(texte)) return;
   }
 
-  const index = projets.findIndex((p) => p.id === projet.id);
-  projets = projets.filter((p) => p.id !== projet.id);
+  const index = projets.indexOf(projet);
+  const etaitActif = projet.id === projetActifId;
+  projets = projets.filter((p) => p !== projet);
 
-  // On passe au projet voisin
-  const voisin = projets[Math.min(index, projets.length - 1)];
-  choisirProjet(voisin.id);
+  if (etaitActif) {
+    // On passe au projet voisin
+    choisirProjet(projets[Math.min(index, projets.length - 1)].id);
+  } else {
+    rendreTout();
+  }
   enregistrerProjets();
+}
+
+/* ----------------------------------------------------------
+   Menu du clic droit sur un projet : Renommer / Supprimer
+   (même style que le menu du clic droit sur une case)
+   ---------------------------------------------------------- */
+function cacherMenuProjet() {
+  menuProjet.hidden = true;
+}
+
+function optionMenuProjet(texte, action, desactive = false, titre = '') {
+  const bouton = document.createElement('button');
+  bouton.type = 'button';
+  bouton.setAttribute('role', 'menuitem');
+  bouton.textContent = texte;
+  bouton.disabled = desactive;
+  if (titre) bouton.title = titre;
+  bouton.addEventListener('click', () => {
+    cacherMenuProjet();
+    action();
+  });
+  menuProjet.append(bouton);
+}
+
+function ouvrirMenuProjet(e, projet) {
+  e.preventDefault();
+  menuProjet.replaceChildren();
+
+  optionMenuProjet('Renommer', () => ouvrirDialogueProjet('renommer', projet));
+  optionMenuProjet(
+    'Supprimer',
+    () => supprimerProjet(projet),
+    projets.length < 2,
+    projets.length < 2 ? 'Il faut garder au moins un projet' : ''
+  );
+
+  menuProjet.hidden = false;
+
+  // Position : à la souris, sans sortir de l'écran
+  menuProjet.style.left = '0px';
+  menuProjet.style.top = '0px';
+  const taille = menuProjet.getBoundingClientRect();
+  menuProjet.style.left = `${Math.max(8, Math.min(e.clientX, window.innerWidth - taille.width - 8))}px`;
+  menuProjet.style.top = `${Math.max(8, Math.min(e.clientY, window.innerHeight - taille.height - 8))}px`;
+
+  menuProjet.querySelector('button').focus();
+}
+
+document.addEventListener('click', (e) => {
+  if (!menuProjet.hidden && !menuProjet.contains(e.target)) cacherMenuProjet();
 });
+document.addEventListener('contextmenu', (e) => {
+  if (!menuProjet.hidden && !e.target.closest('.projet-item')) cacherMenuProjet();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') cacherMenuProjet();
+});
+window.addEventListener('blur', cacherMenuProjet);
+window.addEventListener('resize', cacherMenuProjet);
+window.addEventListener('scroll', cacherMenuProjet, true);
 
 /* ----------------------------------------------------------
    Chargement : à la connexion (et on vide tout à la déconnexion)
@@ -535,6 +763,8 @@ onAuthStateChanged(auth, async (utilisateur) => {
     chargementOk = false;
     projets = [];
     projetActifId = null;
+    cacherMenuProjet();
+    terminerGlissement(true);
     rendreTout();
     majStatutTodo('');
     return;
