@@ -173,8 +173,7 @@ const compteurTodo = $('#todo-compteur');
 const boutonNettoyer = $('#btn-todo-nettoyer');
 
 const listeProjets = $('#projet-liste');
-const formProjet = $('#form-projet');
-const champProjet = $('#projet-nom');
+const boutonAjouterProjet = $('#btn-projet-ajouter');
 const titreProjet = $('#todo-projet-titre');
 const boutonRenommer = $('#btn-projet-renommer');
 const boutonSupprimerProjet = $('#btn-projet-supprimer');
@@ -182,6 +181,8 @@ const boutonSupprimerProjet = $('#btn-projet-supprimer');
 const dialogueProjet = $('#dialogue-projet');
 const formRenommer = $('#form-renommer');
 const champRenommer = $('#valeur-renommer');
+const titreDialogueProjet = $('#titre-projet');
+const boutonValiderProjet = $('#btn-valider-projet');
 
 const MAX_PROJETS = 50;
 const NOM_PROJET_MAX = 60;
@@ -192,6 +193,7 @@ let chargementOk = false;  // les projets ont bien été lus (sinon on n'enregis
 let projets = [];
 let projetActifId = null;
 let delaiMessage = null;
+let modeProjet = 'creer'; // la fenêtre sert à créer ou à renommer
 
 function majStatutTodo(texte) {
   $('#statut-todo').textContent = texte;
@@ -310,12 +312,17 @@ function creerProjetItem(projet) {
   if (projet.id === projetActifId) bouton.setAttribute('aria-current', 'true');
   bouton.addEventListener('click', () => choisirProjet(projet.id));
 
+  const icone = document.createElement('span');
+  icone.className = 'projet-icone';
+  icone.setAttribute('aria-hidden', 'true');
+  icone.textContent = Array.from(projet.nom)[0].toUpperCase();
+
   const nom = document.createElement('span');
   nom.className = 'projet-nom';
   nom.textContent = projet.nom;
   nom.title = projet.nom;
 
-  bouton.append(nom);
+  bouton.append(icone, nom);
 
   const reste = nbAFaire(projet);
   if (reste) {
@@ -445,50 +452,56 @@ boutonNettoyer.addEventListener('click', () => {
 /* ----------------------------------------------------------
    Actions : projets (ajouter, renommer, supprimer)
    ---------------------------------------------------------- */
-formProjet.addEventListener('submit', (e) => {
-  e.preventDefault();
-
-  const nom = nettoyerNom(champProjet.value);
-  if (!nom) return;
-
-  if (!chargementOk) {
-    messageTodo('Les projets sont en cours de chargement, réessaie dans un instant.');
-    return;
-  }
-  if (projets.length >= MAX_PROJETS) {
-    messageTodo(`Tu as atteint le maximum de ${MAX_PROJETS} projets.`);
-    return;
-  }
-
-  const projet = { id: genererId(), nom, taches: [] };
-  projets.push(projet); // en bas de la liste, dans l'ordre de création
-  champProjet.value = '';
-
-  choisirProjet(projet.id);
-  champTodo.focus(); // on peut écrire la première tâche tout de suite
-  enregistrerProjets();
-});
-
-function ouvrirRenommer() {
+function ouvrirDialogueProjet(mode) {
   const projet = projetActif();
-  if (!projet) return;
-  champRenommer.value = projet.nom;
+
+  if (mode === 'renommer' && !projet) return;
+  if (mode === 'creer') {
+    if (!chargementOk) {
+      messageTodo('Les projets sont en cours de chargement, réessaie dans un instant.');
+      return;
+    }
+    if (projets.length >= MAX_PROJETS) {
+      messageTodo(`Tu as atteint le maximum de ${MAX_PROJETS} projets.`);
+      return;
+    }
+  }
+
+  modeProjet = mode;
+  titreDialogueProjet.textContent = mode === 'creer' ? 'Nouveau projet' : 'Renommer le projet';
+  boutonValiderProjet.textContent = mode === 'creer' ? 'Créer' : 'Enregistrer';
+  champRenommer.value = mode === 'creer' ? '' : projet.nom;
+
   dialogueProjet.showModal();
   champRenommer.focus();
   champRenommer.select();
 }
 
-boutonRenommer.addEventListener('click', ouvrirRenommer);
+boutonAjouterProjet.addEventListener('click', () => ouvrirDialogueProjet('creer'));
+boutonRenommer.addEventListener('click', () => ouvrirDialogueProjet('renommer'));
 
 formRenommer.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const projet = projetActif();
+  e.preventDefault(); // la fenêtre se ferme nous-mêmes, la page ne se recharge jamais
   const nom = nettoyerNom(champRenommer.value);
-  if (!projet || !nom) return;
+  if (!nom) {
+    champRenommer.focus();
+    return;
+  }
 
-  projet.nom = nom;
-  dialogueProjet.close();
-  rendreTout();
+  if (modeProjet === 'creer') {
+    if (!chargementOk || projets.length >= MAX_PROJETS) return;
+    const projet = { id: genererId(), nom, taches: [] };
+    projets.push(projet); // en bas de la liste, dans l'ordre de création
+    dialogueProjet.close();
+    choisirProjet(projet.id);
+    champTodo.focus(); // on peut écrire la première tâche tout de suite
+  } else {
+    const projet = projetActif();
+    if (!projet) return;
+    projet.nom = nom;
+    dialogueProjet.close();
+    rendreTout();
+  }
   enregistrerProjets();
 });
 

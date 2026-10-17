@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="outils.css">
+  <link rel="stylesheet" href="outils.css?v=3">
 </head>
 <body>
   <main>
@@ -162,13 +162,11 @@
 
         <!-- Colonne de gauche : un projet = une to-do liste -->
         <aside class="todo-projets" aria-label="Projets">
-          <h2 class="todo-projets-titre">Projets</h2>
+          <h2 class="todo-projets-titre">Mes projets</h2>
           <ul class="projet-liste" id="projet-liste"></ul>
-          <form class="projet-ajout" id="form-projet">
-            <label for="projet-nom" class="sr-only">Nouveau projet</label>
-            <input type="text" id="projet-nom" maxlength="60" autocomplete="off" placeholder="Nouveau projet…">
-            <button type="submit" class="btn btn--bordure" title="Ajouter le projet" aria-label="Ajouter le projet">+</button>
-          </form>
+          <button type="button" class="projet-ajouter" id="btn-projet-ajouter">
+            <span class="projet-plus" aria-hidden="true">+</span> Ajouter un projet
+          </button>
         </aside>
 
         <!-- Tâches du projet choisi -->
@@ -272,21 +270,21 @@
       </div>
     </form>
   </dialog>
-  <!-- Fenêtre pour renommer un projet de la to-do liste -->
+  <!-- Fenêtre pour créer ou renommer un projet de la to-do liste -->
   <dialog id="dialogue-projet" aria-labelledby="titre-projet">
     <form id="form-renommer">
-      <h2 id="titre-projet">Renommer le projet</h2>
+      <h2 id="titre-projet">Nouveau projet</h2>
       <label for="valeur-renommer" class="sr-only">Nom du projet</label>
-      <input type="text" id="valeur-renommer" maxlength="60" autocomplete="off">
+      <input type="text" id="valeur-renommer" maxlength="60" autocomplete="off" placeholder="Nom du projet">
       <div class="dialogue-actions">
         <button type="button" class="btn btn--contour" id="btn-annuler-renommer">Annuler</button>
-        <button type="submit" class="btn btn--olive">Enregistrer</button>
+        <button type="submit" class="btn btn--olive" id="btn-valider-projet">Créer</button>
       </div>
     </form>
   </dialog>
 
   <!-- type="module" : nécessaire pour importer Firebase -->
   <script type="module" src="script.js"></script>
-  <script type="module" src="outils.js"></script>
+  <script type="module" src="outils.js?v=3"></script>
 </body>
 </html>
