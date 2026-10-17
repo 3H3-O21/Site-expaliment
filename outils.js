@@ -68,6 +68,54 @@ document.addEventListener('keydown', (e) => {
 });
 window.addEventListener('resize', () => fermerMenuOutils());
 
+/* ----------------------------------------------------------
+   Menu du compte : un clic sur le cercle avec la lettre ouvre « Déconnexion »
+   (le bouton Déconnexion lui-même est géré par script.js)
+   ---------------------------------------------------------- */
+const boutonCompte = $('#app-courriel');
+const menuCompte = $('#menu-compte');
+
+function ouvrirMenuCompte() {
+  $('#menu-compte-courriel').textContent = boutonCompte.title || '';
+  menuCompte.hidden = false;
+  boutonCompte.setAttribute('aria-expanded', 'true');
+
+  // Aligné sur le bord droit du cercle, sous celui-ci
+  const bouton = boutonCompte.getBoundingClientRect();
+  const menu = menuCompte.getBoundingClientRect();
+  menuCompte.style.left = `${Math.max(8, Math.min(bouton.right - menu.width, window.innerWidth - menu.width - 8))}px`;
+  menuCompte.style.top = `${bouton.bottom + 8}px`;
+
+  menuCompte.querySelector('button').focus();
+}
+
+function fermerMenuCompte(rendreLeFocus = false) {
+  if (menuCompte.hidden) return;
+  menuCompte.hidden = true;
+  boutonCompte.setAttribute('aria-expanded', 'false');
+  if (rendreLeFocus) boutonCompte.focus();
+}
+
+boutonCompte.addEventListener('click', () => {
+  if (menuCompte.hidden) ouvrirMenuCompte();
+  else fermerMenuCompte();
+});
+
+// Un clic sur une option referme le menu (l'action elle-même est dans script.js)
+menuCompte.addEventListener('click', (e) => {
+  if (e.target.closest('button')) fermerMenuCompte();
+});
+
+document.addEventListener('click', (e) => {
+  if (!menuCompte.hidden && !menuCompte.contains(e.target) && !boutonCompte.contains(e.target)) {
+    fermerMenuCompte();
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fermerMenuCompte(true);
+});
+window.addEventListener('resize', () => fermerMenuCompte());
+
 /* ==========================================================
    CONVERTISSEUR : heures et minutes -> heures décimales
    1,45 (1 h 45) -> 1,75      105 (minutes) -> 1,75
@@ -759,6 +807,7 @@ window.addEventListener('scroll', cacherMenuProjet, true);
    ---------------------------------------------------------- */
 onAuthStateChanged(auth, async (utilisateur) => {
   if (!utilisateur) {
+    fermerMenuCompte();
     uid = null;
     chargementOk = false;
     projets = [];

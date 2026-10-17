@@ -17,9 +17,18 @@
   line-height: 1;
   color: var(--olive);
   background: var(--beige);
+  border: 0;
+  padding: 0;
   border-radius: 50%;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
+  transition: box-shadow 0.15s;
+}
+.pastille:hover { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28); }
+.pastille[aria-expanded="true"] { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45); }
+.pastille:focus-visible {
+  outline: 2px solid var(--beige);
+  outline-offset: 3px;
 }
 
 /* ----------------------------------------------------------
@@ -426,4 +435,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   .todo-liste.en-deplacement .todo-item:not(.deplace) { transition: none; }
+}
+
+/* ----------------------------------------------------------
+   Menu du compte (sous le cercle avec la lettre)
+   ---------------------------------------------------------- */
+.menu-compte {
+  min-width: 14rem;
+}
+
+.menu-compte-courriel {
+  padding: 0.45rem 0.7rem 0.55rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }

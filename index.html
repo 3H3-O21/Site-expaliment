@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="outils.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="outils.css?v=5">
 </head>
 <body>
   <main>
@@ -90,8 +90,7 @@
         </button>
         <button type="button" class="btn btn--contour-clair btn-outils" id="btn-outils" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-outils">Outils <span class="chevron" aria-hidden="true">▾</span></button>
         <span class="statut" id="statut-enregistrement" aria-live="polite"></span>
-        <span class="pastille" id="app-courriel" role="img"></span>
-        <button type="button" class="btn btn--contour-clair" id="btn-deconnexion">Déconnexion</button>
+        <button type="button" class="pastille" id="app-courriel" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-compte"></button>
       </header>
 
       <!-- Avis (vérification du courriel, erreurs) : invisible quand il est vide -->
@@ -246,6 +245,12 @@
   <!-- Menu du clic droit sur un projet de la to-do liste -->
   <div class="menu-contextuel menu-projet" id="menu-projet" role="menu" hidden></div>
 
+  <!-- Menu du compte (clic sur le cercle avec la lettre) -->
+  <div class="menu-contextuel menu-compte" id="menu-compte" role="menu" hidden>
+    <p class="menu-compte-courriel" id="menu-compte-courriel"></p>
+    <button type="button" role="menuitem" id="btn-deconnexion">Déconnexion</button>
+  </div>
+
   <!-- Menu du bouton « Outils » -->
   <div class="menu-contextuel menu-outils" id="menu-outils" role="menu" hidden>
     <button type="button" role="menuitem" data-goto="todo">To-do liste</button>
@@ -284,6 +289,6 @@
 
   <!-- type="module" : nécessaire pour importer Firebase -->
   <script type="module" src="script.js"></script>
-  <script type="module" src="outils.js?v=4"></script>
+  <script type="module" src="outils.js?v=5"></script>
 </body>
 </html>
